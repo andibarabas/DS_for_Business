@@ -1,0 +1,171 @@
+---
+title: "Data Science for business - Final Project"
+author: "Andrea Barabas (153651)"
+date: "3 March 2016"
+output: html_document
+---
+#Data Source and Description
+
+In the framework of this project, I chose a publicly available dataset from [Kaggle](https://www.kaggle.com/c/airbnb-recruiting-new-user-bookings/data). I did not follow the rules of the competition, instead I focused on an exploratory data analysis, feature engineering and modelling based on the material the Data Science lectures covered.
+
+New users on Airbnb can book a place to stay in 34,000+ cities across 190+ countries. By accurately predicting where a new user will book their first travel experience, Airbnb can share more personalized content with their community, decrease the average time to first booking, and better forecast demand.
+
+The training set consists of 15 variables that help predict the country destination (+1) of all the new users with first activities after 7/1/2014. The Competition also contained three other datasets, web sessions log for users, summary statistics of destination countries as well as summary statistics of users' age group, gender, country of destination. 
+The number of observations in the training set is 213451 whilst the test set contains 62096 observations and 15 variables.
+
+*Predictor variables:
++ id: user id
++ date_account_created: the date of account creation
++ timestamp_first_active: timestamp of the first activity
++ date_first_booking: date of first booking
++ gender
++ age
++ signup_method
++ signup_flow: the page a user came to signup up from
++ language: international language preference
++ affiliate_channel: what kind of paid marketing
++ affiliate_provider: where the marketing is e.g. google, craigslist, other
++ first_affiliate_tracked: whats the first marketing the user interacted with before the signing up
++ signup_app
++ first_device_type
++ first_browser
++ country_destination: this is the target variable you are to predict
+
+#Exploratory data analysis (EDA)
+
+```{r, include=FALSE}
+rm(list=ls())
+library(plyr)
+library(dplyr)
+library(data.table)
+library(readr)
+library(dplyr)
+library(reshape2)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+##Loading datasets
+```{r, echo=FALSE}
+air_train<- read.csv('/Users/Andi/Desktop/airbnb_train.csv')
+```
+##Searching for missing values
+```{r, echo=FALSE}
+na_count <-sapply(air_train, function(y) sum(length(which(is.na(y)))))
+na_count <- data.frame(na_count)
+na_count
+air_train$timestamp_first_active <- as.Date(strptime(air_train$timestamp_first_active,format="%Y%m%d%H%M%S"))
+air_train$date_account_created <- as.Date(air_train$date_account_created)
+```
+##Predictor: Age
+```{r}
+length(which(air_train$age > 100))
+length(which(air_train$age < 18))
+air_train$age <- as.factor(air_train$age)
+summary(air_train$age)
+ggplot(air_train) + geom_bar(aes(x = age),fill="deepskyblue")
+```
+Due to the large number of missing values as well as the thousands of values well above 100 years, I decided to get rid of the age column.
+###Heatmap for age and date of accounts created
+```{r}
+#taking out outliers
+condition1 <- air_train[,6] >=18 & air_train[,6] <=100
+air3 <- air_train[condition1,]
+View(air3)
+
+summary(air4)
+
+# Heatmap on age and date of accounts dreated
+air_train2 <- as.data.table(air3)
+air_train2[, age:= as.numeric(age)]
+air_train2$date_account_created <- as.Date(air_train2$date_account_created)
+heatmapData <- as.matrix(table(air_train22$age,air_train$date_account_created)^.2)
+p <- qplot(x=Var2, y=Var1, data=melt(heatmapData), fill=value, geom="tile", 
+           xlab = "Date Account Created", ylab = "User Age", 
+           main = "Number of Accounts Created Over Time Across User Ages")
+p <- p + scale_x_discrete(breaks=levels(as.factor(air_train2$date_account_created))[c(TRUE, rep(FALSE, 90))], 
+                          labels=levels(as.factor(air_train2$date_account_created))[c(TRUE, rep(FALSE, 90))])
+p <- p + theme(axis.text.x  = element_text(angle=90, hjust=0.5, size=10))
+p <- p + scale_fill_gradient(low="white", high="orangered")
+print(p)
+```
+
+```{r, echo=FALSE}
+air_train <- subset(air_train, select = -c(age))
+```
+#Predictor: signup_method
+```{r, eval=FALSE}
+air_train[,.N, by=signup_method] #basic, facebook, google
+
+air_train %>% group_by(country_destination, `signup_method`) %>% 
+  summarize(n = n()) %>% as.data.frame
+```
+
+```{r, eval=FALSE}
+ggplot(air_train, aes(x=country_destination, fill=signup_method)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_fill_brewer(palette="Pastel1")
+```
+
+```{r, eval=FALSE}
+air_train2 <- air_train %>%
+  filter(country_destination != "NDF")
+air_train2 <-data.table(air_train2)
+
+air_train2$date_first_booking <- as.Date(air_train2$date_first_booking)
+```
+##By taking out the NDF country destination:
+```{r, eval=FALSE}
+ggplot(air_train2, aes(x=country_destination, fill=signup_method)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_fill_brewer(palette="Pastel1")
+```
+
+#Predictor: gender
+```{r, eval=FALSE}
+air_train2[,.N, by=gender] #-unknown-, FEMALE, MALE, OTHER
+
+air_train2 %>% group_by(country_destination, `gender`) %>% 
+  summarize(n = n()) %>% as.data.frame
+
+air_train2 <- air_train2 %>%
+  filter(gender != "-unknown-")
+
+air_train2 <- air_train2 %>%
+  filter(gender != "OTHER")
+air_train2 %>% group_by(country_destination, `gender`) %>% 
+  summarize(n = n()) %>% as.data.frame
+```
+
+```{r, eval=FALSE}
+ggplot(air_train2, aes(x=country_destination, fill=gender)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_fill_brewer(palette="rainbow(30)")
+```
+
+#Predictor: signup_app
+```{r, eval=FALSE}
+air_train2[,.N, by=signup_app]
+
+air_train2 %>% group_by(country_destination, `signup_app`) %>% 
+  summarize(n = n()) %>% as.data.frame
+```
+
+```{r, eval=FALSE}
+ggplot(air_train2, aes(x=country_destination, fill=signup_app)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_fill_brewer(palette="rainbow(30)")
+```
+##Predictor: language
+```{r, eval=FALSE}
+air_train2[,.N, by=language]
+```
+
+```{r, eval=FALSE}
+ggplot(air_train2, aes(x=country_destination, fill=language)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_fill_brewer(palette="rainbow(30)")
+```
+
+##Predictor: affiliate_provider
+
