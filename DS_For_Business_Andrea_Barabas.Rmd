@@ -285,7 +285,7 @@ summary(airbnb1.gbm)
                          activation = "Rectifier", hidden = c(100,100), epochs = 50,
                          stopping_rounds = 3, stopping_tolerance = 0)
 ```
-
+ 
 #Test set
 ```{r, echo=FALSE, results='hide'} 
 model_perf_rf<- h2o.performance(airbnb.rf,dx_test)

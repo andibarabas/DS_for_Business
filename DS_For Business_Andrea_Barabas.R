@@ -69,7 +69,7 @@ air_train %>% group_by(country_destination, `signup_method`) %>%
 
 ggplot(air_train, aes(x=country_destination, fill=signup_method)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 
 air_train2 <- air_train %>%
   filter(country_destination != "NDF")
@@ -77,7 +77,7 @@ air_train2 <- air_train %>%
 ##By taking out the NDF country destination:
 ggplot(air_train2, aes(x=country_destination, fill=signup_method)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 
 #Predictor: gender
 air_train[,.N, by=gender] #-unknown-, FEMALE, MALE, OTHER
@@ -96,7 +96,7 @@ air_train2 %>% group_by(country_destination, `gender`) %>%
 
 ggplot(air_train2, aes(x=country_destination, fill=gender)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 
 #Predictor: signup_app
 #Android, Moweb, Web, IOS
@@ -107,13 +107,13 @@ air_train2 %>% group_by(country_destination, `signup_app`) %>%
 
 ggplot(air_train2, aes(x=country_destination, fill=signup_app)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 
 ##Predictor: language
 air_train2[,.N, by=language]
 ggplot(air_train2, aes(x=country_destination, fill=language)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 
 ##Predictor: affiliate_provider
 air_train2[,.N, by=affiliate_provider]
@@ -123,7 +123,7 @@ air_train2 %>% group_by(country_destination, `affiliate_provider`) %>%
 
 ggplot(air_train2, aes(x=country_destination, fill=affiliate_provider)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Blues")
+  scale_colour_manual(values="rainboww")
 
 #Predictor: timestamp_first_active
 
@@ -221,45 +221,30 @@ plot(airbnb.gbm)
 
 h2o.auc(airbnb.gbm)
         
-#GBM with cross validation NEMMEGY
-system.time({
+#GBM with cross validation 
+
   airbnb1.gbm <- h2o.gbm(x = 2:ncol(d_train), y = 1, 
                 training_frame = 'd_train', 
                 max_depth = 15, ntrees = 500, learn_rate = 0.01, nbins = 100,
                 nfolds = 5,
-                stopping_rounds = 3, stopping_tolerance = 1e-3)})
-        
-# GBM with grid search
-
-airbnb2.gbm <- h2o.gbm(
-  x = setdiff(names(airbnb.hex), 'country_destination'),
-  y = 'country_destination',
-  training_frame = 'd_train',
-  validation_frame = 'd_valid',
-  model_id = 'airbnb.gbm', ntrees = 500, learn_rate = c(0.01), nbins = 200,
-  stopping_rounds = 5, stopping_tolerance = 1e-3)
-
-summary(airbnb2.gbm)
+                stopping_rounds = 3, stopping_tolerance = 1e-3)
 
 
-# Neural Network #NEMMEGY
+# Neural Network 
 
 system.time({
-  airbnb.nn <- h2o.deeplearning(x = 2:ncol(d_train), y = 1, 
-                         training_frame = 'd_train', validation_frame = 'd_valid',
+  airbnb.nn <- h2o.deeplearning(x = 2:ncol(dx_train), y = 1, 
+                         training_frame = dx_train, validation_frame = dx_valid,
                          activation = "Rectifier", hidden = c(100,100), epochs = 50,
                          stopping_rounds = 3, stopping_tolerance = 0)})
 
+#Test set
+model_perf_rf<- h2o.performance(airbnb.rf,dx_test)
+model_perf_gbm<- h2o.performance(airbnb.gbm,dx_test)
+model_perf_gbm1<- h2o.performance(airbnb1.gbm,dx_test)
+model_perf_nn<- h2o.performance(airbnb.nn,dx_test)
 
-# Comparisons
-models <- data.frame(get.metrics("Distributed Random Forest", drf))
-models <- rbind(models, data.frame(get.metrics("Gradient Boosting Method", gbm)))
-models <- rbind(models, data.frame(get.metrics("Deep Learning", deeplearning)))
-kable(models)
 
-performance <- h2o.performance(gbm, newdata = dx_test)
-kable(data.frame(get.metrics("Performance", performance)))
-print(kable(h2o.confusionMatrix(performance)))
 
 ## bye
 h2o.shutdown()
