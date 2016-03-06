@@ -1,8 +1,8 @@
 
 ---
-title: "Data Science for business - Final Project"
+title: "Data Science for Business - Final Project"
 author: "Andrea Barabas (153651)"
-date: "3 March 2016"
+date: "6 March 2016"
 output: html_document
 ---
 #Data Source and Description
@@ -11,8 +11,8 @@ In the framework of this project, I chose a publicly available dataset from [Kag
 
 New users on Airbnb can book a place to stay in 34,000+ cities across 190+ countries. By accurately predicting where a new user will book their first travel experience, Airbnb can share more personalized content with their community, decrease the average time to first booking, and better forecast demand.
 
-The training set consists of 15 variables that help predict the country destination (+1) of all the new users with first activities after 7/1/2014. The Competition also contained three other datasets, web sessions log for users, summary statistics of destination countries as well as summary statistics of users' age group, gender, country of destination. 
-The number of observations in the training set is 213451 whilst the test set contains 62096 observations and 15 variables.
+The training set consists of 15 variables that help predict the country destination (+1) of all the new users with first activities after 7/1/2014. The competition also contained three other datasets, web sessions log for users, summary statistics of destination countries as well as summary statistics of users' age group, gender, country of destination which I decided not to use for the purpose of this project. 
+The number of observations in the training set is 213451 which I'll eventually split into test and validation sets, ignoring the separate test set on Kaggle's website.
 
 *Predictor variables:
 + id: user id
@@ -44,43 +44,44 @@ library(dplyr)
 library(reshape2)
 library(ggplot2)
 library(RColorBrewer)
+rainboww<- colorRampPalette(c("#FF0000FF", "#FF4D00FF", "#FF9900FF", "#FFE500FF", "#CCFF00FF", "#80FF00FF", "#33FF00FF", "#00FF19FF", "#00FF66FF", "#00FFB2FF", "#00FFFFFF", "#00B3FFFF",
+"#0066FFFF", "#001AFFFF", "#3300FFFF", "#7F00FFFF", "#CC00FFFF", "#FF00E6FF" ,"#FF0099FF", "#FF004DFF"))
 ```
 
-##Loading datasets
-```{r, echo=FALSE}
+```{r, echo=FALSE, results= 'hide'}
 air_train<- read.csv('/Users/Andi/Desktop/airbnb_train.csv')
 ```
-##Searching for missing values
-```{r, echo=FALSE}
+
+```{r, echo=TRUE, results='hide'}
 na_count <-sapply(air_train, function(y) sum(length(which(is.na(y)))))
 na_count <- data.frame(na_count)
 na_count
 air_train$timestamp_first_active <- as.Date(strptime(air_train$timestamp_first_active,format="%Y%m%d%H%M%S"))
 air_train$date_account_created <- as.Date(air_train$date_account_created)
 ```
-##Predictor: Age
-```{r}
+
+#Predictor: Age
+```{r, echo='TRUE'}
 length(which(air_train$age > 100))
 length(which(air_train$age < 18))
-air_train$age <- as.factor(air_train$age)
+```
+
+```{r, echo='TRUE'}
 summary(air_train$age)
 ggplot(air_train) + geom_bar(aes(x = age),fill="deepskyblue")
 ```
-Due to the large number of missing values as well as the thousands of values well above 100 years, I decided to get rid of the age column.
-###Heatmap for age and date of accounts created
-```{r}
+
+##Heatmap for age (between 18 and 100) and date of accounts created
+```{r, echo=FALSE}
 #taking out outliers
 condition1 <- air_train[,6] >=18 & air_train[,6] <=100
 air3 <- air_train[condition1,]
-View(air3)
-
-summary(air4)
 
 # Heatmap on age and date of accounts dreated
 air_train2 <- as.data.table(air3)
 air_train2[, age:= as.numeric(age)]
 air_train2$date_account_created <- as.Date(air_train2$date_account_created)
-heatmapData <- as.matrix(table(air_train22$age,air_train$date_account_created)^.2)
+heatmapData <- as.matrix(table(air_train2$age,air_train2$date_account_created)^.2)
 p <- qplot(x=Var2, y=Var1, data=melt(heatmapData), fill=value, geom="tile", 
            xlab = "Date Account Created", ylab = "User Age", 
            main = "Number of Accounts Created Over Time Across User Ages")
@@ -90,83 +91,217 @@ p <- p + theme(axis.text.x  = element_text(angle=90, hjust=0.5, size=10))
 p <- p + scale_fill_gradient(low="white", high="orangered")
 print(p)
 ```
-
-```{r, echo=FALSE}
+The heatmap shows that that account creation of the site has gradually increased over the years but account creation has largely been dominated by the 25-50 year bucket ever since.
+Due to the large number of missing values as well as the thousands of values above 100 years, I decided not to use the age column. 
+```{r, echo=FALSE, results='hide'}
 air_train <- subset(air_train, select = -c(age))
 ```
+
 #Predictor: signup_method
-```{r, eval=FALSE}
+```{r, echo=TRUE}
+air_train<- data.table(air_train)
 air_train[,.N, by=signup_method] #basic, facebook, google
 
 air_train %>% group_by(country_destination, `signup_method`) %>% 
   summarize(n = n()) %>% as.data.frame
 ```
 
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 ggplot(air_train, aes(x=country_destination, fill=signup_method)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 ```
 
-```{r, eval=FALSE}
+```{r, echo=FALSE, results='hide'}
 air_train2 <- air_train %>%
   filter(country_destination != "NDF")
 air_train2 <-data.table(air_train2)
-
 air_train2$date_first_booking <- as.Date(air_train2$date_first_booking)
 ```
+
 ##By taking out the NDF country destination:
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 ggplot(air_train2, aes(x=country_destination, fill=signup_method)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="Pastel1")
+  scale_colour_manual(values="rainboww")
 ```
 
 #Predictor: gender
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 air_train2[,.N, by=gender] #-unknown-, FEMALE, MALE, OTHER
 
 air_train2 %>% group_by(country_destination, `gender`) %>% 
   summarize(n = n()) %>% as.data.frame
+```
 
+```{r, echo=FALSE, results='hide'}
 air_train2 <- air_train2 %>%
   filter(gender != "-unknown-")
 
 air_train2 <- air_train2 %>%
   filter(gender != "OTHER")
+
 air_train2 %>% group_by(country_destination, `gender`) %>% 
   summarize(n = n()) %>% as.data.frame
 ```
-
-```{r, eval=FALSE}
+By taking out the "unknown" and "other" variables, the graph looks the following:
+```{r, echo=FALSE}
 ggplot(air_train2, aes(x=country_destination, fill=gender)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="rainbow(30)")
+  scale_colour_manual(values="rainboww")
 ```
 
 #Predictor: signup_app
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 air_train2[,.N, by=signup_app]
 
 air_train2 %>% group_by(country_destination, `signup_app`) %>% 
   summarize(n = n()) %>% as.data.frame
 ```
 
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 ggplot(air_train2, aes(x=country_destination, fill=signup_app)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="rainbow(30)")
+  scale_colour_manual(values="rainboww")
 ```
-##Predictor: language
-```{r, eval=FALSE}
+
+#Predictor: language
+```{r, echo=FALSE}
 air_train2[,.N, by=language]
 ```
 
-```{r, eval=FALSE}
+```{r, echo=FALSE}
 ggplot(air_train2, aes(x=country_destination, fill=language)) +
   geom_bar(position="dodge", colour="black") +
-  scale_fill_brewer(palette="rainbow(30)")
+  scale_colour_manual(values="rainboww")
 ```
 
-##Predictor: affiliate_provider
+#Predictor: affiliate_provider
+```{r, echo=FALSE}
+air_train2[,.N, by=affiliate_provider]
 
+air_train2 %>% group_by(country_destination, `affiliate_provider`) %>% 
+  summarize(n = n()) %>% as.data.frame 
+```
+
+```{r, echo=FALSE}
+ggplot(air_train2, aes(x=country_destination, fill=affiliate_provider)) +
+  geom_bar(position="dodge", colour="black") +
+  scale_colour_manual(values="rainboww")
+```
+
+##Predictors: date first booking, timestamp first active and date account created
+```{r, echo=FALSE, results='hide'}
+air_train2[,diff_booking := as.numeric(as.Date(date_first_booking) - as.Date(date_account_created))]
+
+air_train3<- air_train2[diff_booking>=0]
+```
+I created separate columns for the time difference between the first visit to the page and the actual account creation to assess its potential predictive power.
+```{r, echo=FALSE, results='hide'}
+air_train2[,.N, by=diff_booking]
+air_train3<- air_train2[diff_booking>=0]
+```
+
+#  Target variable: Country_destination
+("NDF" value has already been taken out)
+```{r, echo=FALSE}
+ggplot(air_train3, aes(x = country_destination)) + geom_bar(fill='deepskyblue')
+```
+
+```{r, echo=FALSE, results='hide'}
+#delete blank cells and splitting the file into train, test and validation sets.
+air_train3 <- na.omit(air_train3)
+
+set.seed(123)
+N <- nrow(air_train3)
+idx_train <- sample(1:N,N/2)
+idx_valid <- sample(base::setdiff(1:N, idx_train), N/4)
+idx_test <- base::setdiff(base::setdiff(1:N, idx_train),idx_valid)
+d_train <- air_train3[idx_train,]
+d_valid <- air_train3[idx_valid,]
+d_test  <- air_train3[idx_test,]
+
+save(air_train3,file="airbnb.csv")
+```
+
+#  Modelling - Training set
+```{r, echo=FALSE, results='hide'}
+library(h2o)
+
+h2o.init(max_mem_size = "4g", nthreads = -1)   ## starts Java server (R connects via REST)
+
+dx_train <- as.h2o(d_train)  ## uploads data to H2O
+dx_valid <- as.h2o(d_valid)
+dx_test <- as.h2o(d_test)
+```
+
+##Random Forest
+```{r, echo=FALSE, results='hide'}
+airbnb.rf <- h2o.randomForest(
+  x = setdiff(names(dx_train), c('id', 'country_destination', 'date_first_booking','date_account_created', 'timestamp_first_active')),
+  y = 'country_destination',
+  training_frame = dx_train,
+  validation_frame = dx_valid)
+```
+
+```{r, echo=TRUE}
+summary(airbnb.rf)
+```
+
+## GBM
+```{r, echo=FALSE, results='hide'}
+airbnb.gbm <- h2o.gbm(
+  x = setdiff(names(dx_train), c('id', 'country_destination')),
+  y = 'country_destination',
+  training_frame = dx_train,
+  validation_frame = dx_valid,
+  model_id = 'airbnb.gbm')
+```
+
+```{r, echo=TRUE}
+summary(airbnb.gbm)
+plot(airbnb.gbm)
+```
+
+##GBM with cross validation
+```{r, echo=FALSE, results='hide'}
+  airbnb1.gbm <- h2o.gbm(x = setdiff(names(dx_train), c('id', 'country_destination')),
+                         y = 'country_destination', 
+                training_frame = dx_train, 
+                max_depth = 15, ntrees = 500, learn_rate = 0.01, nbins = 100,
+                nfolds = 3,
+                stopping_rounds = 3, stopping_tolerance = 1e-3)
+```
+
+```{r, echo=TRUE}
+summary(airbnb1.gbm)
+```
+
+## Neural Network
+```{r, echo=FALSE, results='hide'}
+  airbnb.nn <- h2o.deeplearning(x = setdiff(names(dx_train), c('id', 'country_destination')),
+                                y = 'country_destination',  
+                         training_frame = dx_train, validation_frame = dx_valid,
+                         activation = "Rectifier", hidden = c(100,100), epochs = 50,
+                         stopping_rounds = 3, stopping_tolerance = 0)
+```
+
+#Test set
+```{r, echo=FALSE, results='hide'} 
+model_perf_rf<- h2o.performance(airbnb.rf,dx_test)
+model_perf_gbm<- h2o.performance(airbnb.gbm,dx_test)
+model_perf_gbm1<- h2o.performance(airbnb1.gbm,dx_test)
+model_perf_nn<- h2o.performance(airbnb.nn,dx_test)
+```
+
+```{r, echo=TRUE}
+model_perf_rf
+model_perf_gbm
+model_perf_gbm1
+model_perf_nn
+```
+
+```{r, echo=FALSE, results='hide'} 
+## bye
+h2o.shutdown()
+```
