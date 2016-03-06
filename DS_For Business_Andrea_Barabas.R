@@ -232,19 +232,18 @@ h2o.auc(airbnb.gbm)
 
 # Neural Network 
 
-system.time({
   airbnb.nn <- h2o.deeplearning(x = 2:ncol(dx_train), y = 1, 
                          training_frame = dx_train, validation_frame = dx_valid,
                          activation = "Rectifier", hidden = c(100,100), epochs = 50,
-                         stopping_rounds = 3, stopping_tolerance = 0)})
+                         stopping_rounds = 3, stopping_tolerance = 0)
+
+summary(airbnb.nn)
 
 #Test set
 model_perf_rf<- h2o.performance(airbnb.rf,dx_test)
 model_perf_gbm<- h2o.performance(airbnb.gbm,dx_test)
 model_perf_gbm1<- h2o.performance(airbnb1.gbm,dx_test)
 model_perf_nn<- h2o.performance(airbnb.nn,dx_test)
-
-
 
 ## bye
 h2o.shutdown()
